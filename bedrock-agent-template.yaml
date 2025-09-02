@@ -41,8 +41,6 @@ Resources:
             Principal:
               Service: bedrock.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonBedrockFullAccess
       Policies:
         - PolicyName: BedrockAgentPolicy
           PolicyDocument:
@@ -56,9 +54,16 @@ Resources:
                   - !Sub 'arn:aws:bedrock:*::foundation-model/${FoundationModel}'
               - Effect: Allow
                 Action:
+                  - bedrock:ListFoundationModels
+                  - bedrock:GetFoundationModel
+                Resource: '*'
+              - Effect: Allow
+                Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
                 Resource: !Sub 'arn:aws:logs:*:*:log-group:/aws/bedrock/*'
 
   # Bedrock Agent
