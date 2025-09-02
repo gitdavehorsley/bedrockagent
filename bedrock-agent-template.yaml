@@ -56,6 +56,17 @@ Resources:
                 Action:
                   - bedrock:ListFoundationModels
                   - bedrock:GetFoundationModel
+                  - bedrock:CreateAgent
+                  - bedrock:UpdateAgent
+                  - bedrock:DeleteAgent
+                  - bedrock:GetAgent
+                  - bedrock:ListAgents
+                  - bedrock:CreateAgentAlias
+                  - bedrock:UpdateAgentAlias
+                  - bedrock:DeleteAgentAlias
+                  - bedrock:GetAgentAlias
+                  - bedrock:ListAgentAliases
+                  - bedrock:InvokeAgent
                 Resource: '*'
               - Effect: Allow
                 Action:
