@@ -1,0 +1,174 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS Bedrock Agent with Claude Sonnet 3.7 for OpenWebUI Testing'
+
+Parameters:
+  AgentName:
+    Type: String
+    Default: 'TestAgent'
+    Description: 'Name of the Bedrock Agent'
+
+  AgentDescription:
+    Type: String
+    Default: 'Bedrock Agent for OpenWebUI testing with Claude Sonnet 3.7'
+    Description: 'Description of the Bedrock Agent'
+
+  FoundationModel:
+    Type: String
+    Default: 'anthropic.claude-3-5-sonnet-20241022-v2:0'
+    AllowedValues:
+      - 'anthropic.claude-3-5-sonnet-20241022-v2:0'
+      - 'anthropic.claude-3-5-haiku-20241022-v2:0'
+      - 'anthropic.claude-3-sonnet-20240229-v1:0'
+      - 'anthropic.claude-3-haiku-20240307-v1:0'
+    Description: 'Foundation model to use for the agent'
+
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues: ['dev', 'test', 'prod']
+    Description: 'Environment for the deployment'
+
+Resources:
+  # IAM Role for Bedrock Agent
+  BedrockAgentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AgentName}-${Environment}-bedrock-agent-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonBedrockFullAccess
+      Policies:
+        - PolicyName: BedrockAgentPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - !Sub 'arn:aws:bedrock:*::foundation-model/${FoundationModel}'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:*:*:log-group:/aws/bedrock/*'
+
+  # Bedrock Agent
+  BedrockAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      AgentName: !Ref AgentName
+      Description: !Ref AgentDescription
+      FoundationModel: !Ref FoundationModel
+      Instruction: |
+        You are a helpful AI assistant powered by Claude Sonnet 3.7. You can help users with various tasks including:
+
+        - Answering questions and providing information
+        - Writing and editing content
+        - Analyzing data and documents
+        - Solving problems and brainstorming ideas
+        - Providing explanations and tutorials
+
+        When responding, be:
+        - Clear and concise
+        - Helpful and accurate
+        - Professional but friendly
+        - Honest about your capabilities and limitations
+
+        If you don't know something or can't help with a specific request, let the user know clearly rather than making up information.
+
+        This agent is configured for testing with OpenWebUI, so you may receive various types of requests for testing purposes.
+      AgentResourceRoleArn: !GetAtt BedrockAgentRole.Arn
+      IdleSessionTTLInSeconds: 3600
+      PromptOverrideConfiguration:
+        PromptConfigurations:
+          - PromptType: PRE_PROCESSING
+            PromptCreationMode: OVERRIDDEN
+            PromptState: ENABLED
+            BasePromptTemplate: |
+              You are a preprocessing assistant. Your task is to analyze the user's input and determine if it requires any specific handling or if it can be processed normally by the main agent.
+
+              User input: {{.user_input}}
+
+              Please provide a brief analysis and any preprocessing recommendations.
+            InferenceConfiguration:
+              Temperature: 0.7
+              TopP: 0.9
+              TopK: 250
+              MaximumLength: 1000
+          - PromptType: ORCHESTRATION
+            PromptCreationMode: OVERRIDDEN
+            PromptState: ENABLED
+            BasePromptTemplate: |
+              You are Claude Sonnet 3.7, an AI assistant helping users with their requests. You have access to various tools and capabilities.
+
+              Current user input: {{.user_input}}
+              Conversation history: {{.conversation_history}}
+
+              Instructions:
+              1. Understand the user's request thoroughly
+              2. Provide helpful, accurate responses
+              3. Use available tools when appropriate
+              4. Be clear and concise in your responses
+              5. Ask for clarification if needed
+
+              Please respond to the user's request.
+            InferenceConfiguration:
+              Temperature: 0.7
+              TopP: 0.9
+              TopK: 250
+              MaximumLength: 2000
+
+  # Agent Alias for invoking the agent
+  BedrockAgentAlias:
+    Type: AWS::Bedrock::AgentAlias
+    Properties:
+      AgentId: !Ref BedrockAgent
+      AgentAliasName: 'latest'
+      Description: 'Latest version of the Bedrock Agent'
+
+  # CloudWatch Log Group for agent logs
+  AgentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/bedrock/${AgentName}-${Environment}'
+      RetentionInDays: 30
+
+Outputs:
+  AgentId:
+    Description: 'The ID of the created Bedrock Agent'
+    Value: !Ref BedrockAgent
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentId'
+
+  AgentAliasId:
+    Description: 'The alias ID for invoking the agent'
+    Value: !Ref BedrockAgentAlias
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentAliasId'
+
+  AgentRoleArn:
+    Description: 'ARN of the IAM role for the Bedrock Agent'
+    Value: !GetAtt BedrockAgentRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentRoleArn'
+
+  AgentAliasArn:
+    Description: 'ARN of the Bedrock Agent Alias'
+    Value: !GetAtt BedrockAgentAlias.AgentAliasArn
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentAliasArn'
+
+  FoundationModelUsed:
+    Description: 'The foundation model used by the agent'
+    Value: !Ref FoundationModel
+    Export:
+      Name: !Sub '${AWS::StackName}-FoundationModel'
