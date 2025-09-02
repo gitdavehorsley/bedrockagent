@@ -110,11 +110,17 @@ Resources:
             PromptCreationMode: OVERRIDDEN
             PromptState: ENABLED
             BasePromptTemplate: |
-              You are a preprocessing assistant. Your task is to analyze the user's input and determine if it requires any specific handling or if it can be processed normally by the main agent.
-
-              User input: {{.user_input}}
-
-              Please provide a brief analysis and any preprocessing recommendations.
+              {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 1000,
+                "system": "You are a preprocessing assistant. Your task is to analyze the user's input and determine if it requires any specific handling or if it can be processed normally by the main agent.",
+                "messages": [
+                  {
+                    "role": "user",
+                    "content": "User input: {{.user_input}}\n\nPlease provide a brief analysis and any preprocessing recommendations."
+                  }
+                ]
+              }
             InferenceConfiguration:
               Temperature: 0.7
               TopP: 0.9
@@ -124,19 +130,17 @@ Resources:
             PromptCreationMode: OVERRIDDEN
             PromptState: ENABLED
             BasePromptTemplate: |
-              You are Claude Sonnet 3.7, an AI assistant helping users with their requests. You have access to various tools and capabilities.
-
-              Current user input: {{.user_input}}
-              Conversation history: {{.conversation_history}}
-
-              Instructions:
-              1. Understand the user's request thoroughly
-              2. Provide helpful, accurate responses
-              3. Use available tools when appropriate
-              4. Be clear and concise in your responses
-              5. Ask for clarification if needed
-
-              Please respond to the user's request.
+              {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 2000,
+                "system": "You are Claude Sonnet 3.7, an AI assistant helping users with their requests. You have access to various tools and capabilities.\n\nInstructions:\n1. Understand the user's request thoroughly\n2. Provide helpful, accurate responses\n3. Use available tools when appropriate\n4. Be clear and concise in your responses\n5. Ask for clarification if needed",
+                "messages": [
+                  {
+                    "role": "user",
+                    "content": "{{.conversation_history}}\n\nCurrent user input: {{.user_input}}\n\nPlease respond to the user's request."
+                  }
+                ]
+              }
             InferenceConfiguration:
               Temperature: 0.7
               TopP: 0.9
